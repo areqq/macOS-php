@@ -421,20 +421,28 @@ share/man share/doc share/aclocal"
   for e in $ex; do exargs+=( --exclude "$bn/$e" ); done
 
   # bsdtar --disable-copyfile: no AppleDouble (._*) or copyfile(3) xattrs.
-  # Compression: zstd -19 (solid ratio, instant decompression); fallback xz -9.
-  if command -v zstd >/dev/null 2>&1; then
-    out="$outdir/$base.tar.zst"
-    c "packing $PREFIX → $out  (bsdtar --disable-copyfile | zstd -19 -T0)"
-    bsdtar --disable-copyfile "${exargs[@]}" -cf - -C "$parent" "$bn" \
-      | zstd -19 -T0 -q -f -o "$out"
-  elif command -v xz >/dev/null 2>&1; then
-    out="$outdir/$base.tar.xz"
-    c "packing $PREFIX → $out  (bsdtar --disable-copyfile | xz -9 -T0; no zstd)"
-    bsdtar --disable-copyfile "${exargs[@]}" -cf - -C "$parent" "$bn" \
-      | xz -9 -T0 -c > "$out"
-  else
-    die "no zstd and no xz — nothing to compress with"
-  fi
+  # Compression via DIST_COMPRESS: xz (default for releases — macOS `tar` reads
+  # it natively, no extra tool to unpack) or zstd (smaller/faster, but the end
+  # user may need the zstd binary). `auto` prefers zstd if present, else xz.
+  local fmt="${DIST_COMPRESS:-xz}"
+  [ "$fmt" = auto ] && { command -v zstd >/dev/null 2>&1 && fmt=zstd || fmt=xz; }
+  case "$fmt" in
+    zstd)
+      command -v zstd >/dev/null 2>&1 || die "DIST_COMPRESS=zstd but zstd is missing"
+      out="$outdir/$base.tar.zst"
+      c "packing $PREFIX → $out  (bsdtar --disable-copyfile | zstd -19 -T0)"
+      bsdtar --disable-copyfile "${exargs[@]}" -cf - -C "$parent" "$bn" \
+        | zstd -19 -T0 -q -f -o "$out"
+      ;;
+    xz)
+      command -v xz >/dev/null 2>&1 || die "DIST_COMPRESS=xz but xz is missing"
+      out="$outdir/$base.tar.xz"
+      c "packing $PREFIX → $out  (bsdtar --disable-copyfile | xz -9 -T0)"
+      bsdtar --disable-copyfile "${exargs[@]}" -cf - -C "$parent" "$bn" \
+        | xz -9 -T0 -c > "$out"
+      ;;
+    *) die "unknown DIST_COMPRESS=$fmt (use xz | zstd | auto)" ;;
+  esac
 
   ( cd "$outdir" && shasum -a 256 "$(basename "$out")" > "$(basename "$out").sha256" )
   ok "archive: $out  ($(du -h "$out" | cut -f1)), sha256 alongside"

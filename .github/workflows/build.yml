@@ -33,6 +33,8 @@ jobs:
         run: ./compile-php.sh
 
       - name: Pack distribution archive
+        env:
+          DIST_COMPRESS: xz   # macOS tar unpacks .xz natively (no extra tool)
         run: |
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             TAG="${GITHUB_REF_NAME}"
