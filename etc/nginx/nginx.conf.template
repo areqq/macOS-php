@@ -1,0 +1,55 @@
+# macOS-php — nginx config template.
+# Placeholders @PREFIX@ @SERVER_NAME@ @PORT@ @DOCROOT@ are substituted by
+# compile-php.sh (step config) and by install.sh.
+
+worker_processes  auto;
+pid               @PREFIX@/var/run/nginx.pid;
+error_log         @PREFIX@/var/log/nginx/error.log;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       @PREFIX@/etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    access_log    @PREFIX@/var/log/nginx/access.log;
+
+    sendfile          on;
+    tcp_nopush        on;
+    keepalive_timeout 65;
+    server_tokens     off;
+
+    client_max_body_size 64m;
+
+    server {
+        listen       @PORT@ ssl;
+        http2        on;
+        server_name  @SERVER_NAME@;
+
+        ssl_certificate     @PREFIX@/etc/ssl/server.crt;
+        ssl_certificate_key @PREFIX@/etc/ssl/server.key;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+
+        root  @DOCROOT@;
+        index index.php index.html;
+
+        location / {
+            try_files $uri $uri/ /index.php$is_args$args;
+        }
+
+        location ~ \.php$ {
+            include      @PREFIX@/etc/nginx/fastcgi_params;
+            fastcgi_pass unix:@PREFIX@/var/run/php-fpm.sock;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            fastcgi_param HTTPS on;
+        }
+
+        location = /fpm-ping {
+            include      @PREFIX@/etc/nginx/fastcgi_params;
+            fastcgi_pass unix:@PREFIX@/var/run/php-fpm.sock;
+            fastcgi_param SCRIPT_FILENAME $fastcgi_script_name;
+        }
+    }
+}
