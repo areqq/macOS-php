@@ -1,0 +1,62 @@
+name: build-php85
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'php85-v*'
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: php85
+
+jobs:
+  build:
+    # Apple Silicon (arm64) hosted runner. Free & unlimited for public repos.
+    runs-on: macos-14
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Homebrew dependencies
+        # Build-time only. No pcre2 (compiled statically into nginx), no ICU
+        # (intl is excluded). xz: macOS `tar` reads .xz natively.
+        run: brew install re2c autoconf bison pkg-config xz
+
+      - name: Cache downloaded sources
+        uses: actions/cache@v4
+        with:
+          path: ~/php85-build/src
+          key: php85-src-${{ hashFiles('php85/versions.env') }}
+
+      - name: Build toolchain (PHP 8.5 + nginx)
+        run: ./compile-php.sh
+
+      - name: Pack distribution archive
+        env:
+          DIST_COMPRESS: xz   # macOS tar unpacks .xz natively (no extra tool)
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          fi
+          DIST_OUT="${GITHUB_WORKSPACE}/dist" DIST_TAG="${TAG}" ./compile-php.sh dist
+          ls -la "${GITHUB_WORKSPACE}/dist"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: php85-macos-arm64
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" "${GITHUB_WORKSPACE}"/dist/* --generate-notes --title "${GITHUB_REF_NAME}"

@@ -52,6 +52,13 @@ If `SERVER_NAME` isn't `localhost`, add it to `/etc/hosts`:
 echo "127.0.0.1 php.local" | sudo tee -a /etc/hosts
 ```
 
+## PHP 8.5 build
+
+This repo also ships a sibling **PHP 8.5 + nginx** build (same approach, into
+`/opt/php8.5`) under [`php85/`](php85/) — production-minimal extension set, fully
+self-contained. See [`php85/README.md`](php85/README.md). It builds on a
+separate CI workflow (tags `php85-vX.Y.Z`) and publishes its own Releases.
+
 ## Build from source
 
 See **[BUILD.md](BUILD.md)** for the full process and the macOS-specific
