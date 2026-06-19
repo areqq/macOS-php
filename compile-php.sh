@@ -525,6 +525,8 @@ step_verify() {
   fi
   echo "--- nginx -t ---"
   "$PREFIX/sbin/nginx" -t -c "$PREFIX/etc/nginx/nginx.conf" 2>&1 || true
+  echo "--- nginx linkage (otool -L; must show NO Homebrew/pcre2 dylib) ---"
+  otool -L "$PREFIX/sbin/nginx" | sed -n '2,40p'
   echo "--- key extensions ---"
   "$PREFIX/bin/php" -r 'foreach(["intl","openssl","curl","mysqli","pdo_mysql","mbstring","zip","bcmath","exif","Zend OPcache","apcu"] as $e){printf("  %-14s %s\n",$e,extension_loaded($e)?"OK":"MISSING");}'
   ok "verification done"
