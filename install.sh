@@ -13,8 +13,8 @@
 #   SERVER_NAME=php.local PORT=8443 DOCROOT=/path/to/site ./install.sh
 #   MACOS_PHP_URL=https://.../bundle.tar.zst ./install.sh   # explicit bundle URL
 #
-# Requirements: macOS arm64 (Apple Silicon), curl, tar, Homebrew pcre2
-# (`brew install pcre2`). bsdtar on macOS auto-detects .zst/.xz compression.
+# Requirements: macOS arm64 (Apple Silicon), curl, tar. No Homebrew needed —
+# the bundle is fully self-contained. macOS tar reads the .xz bundle natively.
 # =============================================================================
 set -euo pipefail
 

@@ -1,7 +1,9 @@
 # macOS-php
 
 Native (Apple Silicon, **arm64**) **PHP 5.6.40 + nginx** for modern macOS —
-self-contained, no Docker, no Homebrew at runtime (except `pcre2` for nginx).
+fully self-contained: no Docker, no Homebrew at runtime. The only libraries it
+links outside its own prefix are the ones macOS always ships (`libSystem`,
+`libc++`, `libresolv`, `libxml2`, `libicucore`).
 
 Two ways to get it:
 
@@ -25,9 +27,6 @@ bcmath, exif, opcache` + `apcu` and `tideways_xhprof` (PECL). SAPIs: CLI
 ## Install prebuilt (recommended)
 
 ```bash
-# requires Homebrew pcre2 (nginx runtime dep)
-brew install pcre2
-
 curl -fsSL https://raw.githubusercontent.com/areqq/macOS-php/main/install.sh -o install.sh
 chmod +x install.sh
 ./install.sh                                   # latest release

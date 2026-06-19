@@ -11,9 +11,10 @@
 #
 # Every non-trivial dependency (OpenSSL 1.1.1, ICU 66, libiconv, zlib, curl)
 # is compiled FROM SOURCE into the same prefix with ABSOLUTE install_names,
-# so the result is self-contained and needs neither Homebrew nor DYLD_* at
-# runtime. The only runtime dependency outside the prefix is Homebrew pcre2
-# (for nginx).
+# and pcre2 is linked statically into nginx, so the result is fully
+# self-contained: it needs neither Homebrew nor DYLD_* at runtime. The only
+# libraries linked outside the prefix are ones macOS always ships (libSystem,
+# libc++, libresolv, libxml2, libicucore).
 #
 # Usage:
 #   ./compile-php.sh                 # full build from scratch (all steps)
@@ -126,10 +127,12 @@ fix_install_names() {
 STEPS=(prereqs autoconf269 confaux openssl icu libiconv zlib curl php pecl nginx config verify)
 
 step_prereqs() {
-  c "Homebrew: re2c, autoconf, bison, pkg-config, pcre2"
+  # Build-time only: re2c (PHP), autoconf/bison/pkg-config (toolchain). pcre2 is
+  # NOT installed via brew — we build it from source into nginx (step_nginx).
+  c "Homebrew: re2c, autoconf, bison, pkg-config"
   command -v brew >/dev/null || die "brew not found — install Homebrew"
-  brew install re2c autoconf bison pkg-config pcre2 >/dev/null 2>&1 || \
-    brew install re2c autoconf bison pkg-config pcre2 || true
+  brew install re2c autoconf bison pkg-config >/dev/null 2>&1 || \
+    brew install re2c autoconf bison pkg-config || true
   mkdir -p "$SRC" "$LOGS"
   # /opt/php56 usually needs sudo to create; then chown to the user.
   # We chown the prefix ITSELF (not its dirname — for /opt/php56 the dirname
@@ -349,8 +352,12 @@ step_nginx() {
   [ -x "$PREFIX/sbin/nginx" ] && { ok "nginx already built"; return; }
   fetch "https://nginx.org/download/nginx-$NGINX_VER.tar.gz" "nginx-$NGINX_VER.tar.gz"
   ( cd "$SRC" && rm -rf "nginx-$NGINX_VER" && tar xf "nginx-$NGINX_VER.tar.gz" )
-  local PCRE2; PCRE2="$(brew --prefix pcre2)"
-  c "building nginx $NGINX_VER (OpenSSL 1.1.1w + pcre2) → $PREFIX"
+  # pcre2 sources — nginx compiles them statically into its binary (no runtime
+  # dep on Homebrew). nginx >= 1.21.5 accepts a PCRE2 source dir for --with-pcre.
+  fetch "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-$PCRE2_VER/pcre2-$PCRE2_VER.tar.gz" \
+        "pcre2-$PCRE2_VER.tar.gz"
+  ( cd "$SRC" && rm -rf "pcre2-$PCRE2_VER" && tar xf "pcre2-$PCRE2_VER.tar.gz" )
+  c "building nginx $NGINX_VER (OpenSSL 1.1.1w + static pcre2 $PCRE2_VER) → $PREFIX"
   # NOTE: no --with-file-aio — that is Linux/FreeBSD (ngx_aiocb_t); macOS lacks it.
   run "nginx" bash -c "cd '$SRC/nginx-$NGINX_VER' && \
       ./configure \
@@ -362,7 +369,7 @@ step_nginx() {
         --http-client-body-temp-path='$PREFIX/var/cache/nginx/client_temp' \
         --http-proxy-temp-path='$PREFIX/var/cache/nginx/proxy_temp' \
         --http-fastcgi-temp-path='$PREFIX/var/cache/nginx/fastcgi_temp' \
-        --with-pcre --with-pcre-jit --with-threads \
+        --with-pcre="$SRC/pcre2-$PCRE2_VER" --with-pcre-jit --with-threads \
         --with-http_ssl_module --with-http_v2_module --with-http_realip_module \
         --with-http_gzip_static_module --with-http_stub_status_module \
         --without-http_autoindex_module --without-http_ssi_module \
@@ -372,8 +379,8 @@ step_nginx() {
         --without-http_scgi_module --without-http_grpc_module \
         --without-http_memcached_module --without-http_empty_gif_module \
         --without-http_browser_module \
-        --with-cc-opt='-I$PREFIX/include -I$PCRE2/include -mmacosx-version-min=$MACOS_MIN' \
-        --with-ld-opt='-L$PREFIX/lib -L$PCRE2/lib -Wl,-rpath,$PREFIX/lib' && \
+        --with-cc-opt='-I$PREFIX/include -mmacosx-version-min=$MACOS_MIN' \
+        --with-ld-opt='-L$PREFIX/lib -Wl,-rpath,$PREFIX/lib' && \
       make -j$JOBS && make install"
   # Keep only the files we actually use. The rest are .default + charset maps +
   # scgi/uwsgi params for modules we don't build → remove them.

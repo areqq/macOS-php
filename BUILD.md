@@ -41,8 +41,9 @@ from the SDK).
 ## Requirements
 
 - Apple Silicon (arm64), macOS with Command Line Tools (`xcode-select --install`).
-- [Homebrew](https://brew.sh) (the script installs `re2c`, `autoconf`, `bison`,
-  `pkg-config`, `pcre2`).
+- [Homebrew](https://brew.sh) (the script installs the build tools `re2c`,
+  `autoconf`, `bison`, `pkg-config`). These are build-time only — the finished
+  build needs no Homebrew.
 - `sudo` **once** — to create `/opt/php56` (then `chown` to the user). To avoid
   sudo: `PREFIX=$HOME/php5.6 ./compile-php.sh`.
 
@@ -50,7 +51,7 @@ from the SDK).
 
 | Step | What it does |
 |---|---|
-| `prereqs`     | brew (re2c/autoconf/bison/pkg-config/pcre2), creates `$PREFIX` |
+| `prereqs`     | brew build tools (re2c/autoconf/bison/pkg-config), creates `$PREFIX` |
 | `autoconf269` | builds autoconf 2.69 locally (see pitfalls) |
 | `confaux`     | arm64-aware `config.sub/guess` + `xml2-config` shim |
 | `openssl`     | OpenSSL 1.1.1w → `$PREFIX` |
@@ -60,7 +61,7 @@ from the SDK).
 | `curl`        | curl 8.17.0 (OpenSSL backend) → `$PREFIX` |
 | `php`         | clone + buildconf (ac 2.69) + configure + make + install |
 | `pecl`        | APCu 4.0.11 + Tideways/XHProf 3.0.3 |
-| `nginx`       | nginx 1.31.1 from source (OpenSSL 1.1.1w + pcre2) → `$PREFIX` |
+| `nginx`       | nginx 1.31.1 from source (OpenSSL 1.1.1w + static pcre2) → `$PREFIX` |
 | `config`      | installs `php.ini`, `conf.d/*`, FPM pool, base `nginx.conf` |
 | `verify`      | `php -v/-m`, `php -S` smoke, `php-fpm -t`, `nginx -t`, extension check |
 
