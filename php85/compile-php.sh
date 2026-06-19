@@ -204,7 +204,7 @@ step_php() {
       --with-curl \
       --with-iconv='$PREFIX' \
       --enable-mbstring \
-      --enable-opcache=shared"
+      --enable-opcache"
   c "make -j$JOBS (this takes a few minutes)"
   run "make" bash -c "cd '$SRC/php' && make -j$JOBS"
   c "make install → $PREFIX"

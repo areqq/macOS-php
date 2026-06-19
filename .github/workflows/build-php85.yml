@@ -31,7 +31,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/php85-build/src
-          key: php85-src-${{ hashFiles('php85/versions.env') }}
+          # Include compile-php.sh so changing configure flags busts the cache
+          # (otherwise a stale prebuilt php-src tree is restored).
+          key: php85-src-${{ hashFiles('php85/versions.env', 'php85/compile-php.sh') }}
 
       - name: Build toolchain (PHP 8.5 + nginx)
         run: ./compile-php.sh
